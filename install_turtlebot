@@ -1,0 +1,32 @@
+# Load ROS 2 Jazzy
+source /opt/ros/jazzy/setup.bash
+
+# Create TurtleBot3 workspace
+mkdir turtlebot3_ws/src
+
+# Go to source folder
+cd ~/turtlebot3_ws/src
+
+# Download TurtleBot3 packages
+git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3.git
+git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3_msgs.git
+git clone -b jazzy https://github.com/ROBOTIS-GIT/turtlebot3_simulations.git
+
+# Go to workspace
+cd ~/turtlebot3_ws
+
+# Install dependencies
+rosdep update
+rosdep install --from-paths src --ignore-src -r -y
+
+# Build
+colcon build --symlink-install
+
+# Source the workspace
+source ~/turtlebot3_ws/install/setup.bash
+
+# Select Burger robot
+export TURTLEBOT3_MODEL=burger
+
+# Check that TurtleBot3 packages are available
+ros2 pkg list | grep turtlebot3
