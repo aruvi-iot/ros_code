@@ -1,0 +1,145 @@
+1) Confirm Harmonic is working with a built-in world
+bash
+# List available example worlds (paths can vary by install)
+gz sim -s --help | grep -i sdf
+
+# Try a standard example world
+gz sim -s shapes.sdf
+Let it run for ~10–15 seconds:
+
+If the GUI opens and doesn’t crash → core Gazebo Sim 8.11 is functional.
+
+If it fails, note the exact error (missing render engine, plugin, etc.).
+
+You can also try other built-in worlds if available:
+
+bash
+gz sim -s double_pendulum.sdf
+gz sim -s baylands.sdf
+2) Verify ROS 2 Jazzy ↔ Gazebo Harmonic bridge
+With ROS 2 Jazzy sourced:
+
+bash
+# Terminal 1: start Gazebo
+gz sim -s shapes.sdf
+
+# Terminal 2: start a simple bridge (clock is always available)
+ros2 run ros_gz_bridge parameter_bridge \
+  /clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock
+Then:
+
+bash
+# Terminal 3
+ros2 topic echo /clock
+If you see a stream of Clock messages, your ROS 2 ↔ Gazebo integration is working at a basic level.
+
+3) Test sensor-style workload (LiDAR / camera class)
+Gazebo Harmonic 8.11 is commonly used for LiDAR and camera simulations in ROS 2 projects.
+
+If you already have a robot package (e.g., TurtleBot3, a custom mobile robot, or a manipulator):
+
+bash
+# Example pattern (adapt to your package)
+ros2 launch <your_robot_gazebo> <your_robot>.launch.py
+Then check sensor topics:
+
+bash
+ros2 topic list | grep -E 'scan|image|points|depth'
+
+# Example:
+ros2 topic echo /scan        # for 2D LiDAR
+ros2 topic echo /camera/image_raw
+ros2 topic echo /lidar/points
+If messages appear with real data (not just headers), your sensor pipeline is functional.
+
+If you tell me which robot or tutorial you’re following, I can give exact commands for that setup.
+
+4) Light stress test for “advanced” readiness
+To see if your laptop can handle heavier use cases:
+
+bash
+# Run a more complex world if available
+gz sim -s baylands.sdf
+While it’s running:
+
+bash
+# Monitor CPU usage of gz sim
+top -p $(pgrep -d, -f "gz sim")
+Watch:
+
+FPS in Gazebo (bottom-left in the GUI).
+
+Whether simulation stays close to real-time.
+
+Whether adding more models/sensors makes it unusably slow.
+
+This is a practical indicator of whether your hardware is enough for advanced scenarios (multi-robot, many sensors, complex environments).
+
+5) Optional: targeted “advanced workload” test script
+If you want a single script that runs a short simulation and checks key behaviors, here’s a minimal one tuned for gz-sim 8.11 + ROS 2:
+
+bash
+#!/usr/bin/env bash
+# test_gz_harmonic_advanced.sh
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+pass() { echo -e "${GREEN}[PASS]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+fail() { echo -e "${RED}[FAIL]${NC} $1"; }
+
+section() { echo -e "\n=== $1 ==="; }
+
+section "GAZEBO VERSION"
+gz_ver=$(gz sim --version 2>&1 | head -n1)
+if echo "$gz_ver" | grep -q "8.11"; then
+  pass "Gazebo Sim version looks like Harmonic 8.11: $gz_ver"
+else
+  warn "Gazebo Sim version: $gz_ver (expected ~8.11 for Harmonic)"
+fi
+
+section "LAUNCH WORLD (shapes.sdf) FOR 8 SECONDS"
+if timeout 8 gz sim -s shapes.sdf >/dev/null 2>&1; then
+  # timeout returns 124 if it timed out (i.e., process ran successfully)
+  if [ $? -eq 124 ]; then
+    pass "gz sim launched shapes.sdf and ran for 8s without crash"
+  else
+    fail "gz sim exited early or crashed"
+  fi
+else
+  # timeout printed its own message; treat non-124 as failure
+  fail "gz sim failed to launch shapes.sdf"
+fi
+
+section "ROS 2 + GAZEBO BRIDGE CHECK"
+if ! command -v ros2 >/dev/null 2>&1; then
+  fail "ros2 not found in PATH"
+  exit 1
+fi
+
+if ros2 run ros_gz_bridge --help >/dev/null 2>&1; then
+  pass "ros_gz_bridge executable found"
+else
+  fail "ros_gz_bridge not found (install ros-*-ros-gz-bridge)"
+fi
+
+section "SENSOR TOPIC SANITY"
+# This is generic; adapt if you have a specific robot
+topic_count=$(ros2 topic list 2>/dev/null | wc -l)
+if [ "$topic_count" -gt 0 ]; then
+  pass "ros2 topic list works ($topic_count topics)"
+else
+  fail "ros2 topic list returned nothing"
+fi
+
+echo -e "\nAdvanced functional tests done."
+Usage:
+
+bash
+chmod +x test_gz_harmonic_advanced.sh
+./test_gz_harmonic_advanced.sh
