@@ -1,0 +1,69 @@
+Start the robot
+Terminal 1:
+
+bash
+cd ~/simple_gazebo_robot
+gz sim simple_robot_world.sdf
+Make sure the play button in Gazebo is active. If the simulation is paused, the robot will not move.
+
+Drive it from Terminal 2
+Move forward
+bash
+gz topic -t /cmd_vel \
+  -m gz.msgs.Twist \
+  -p 'linear: {x: 0.5}, angular: {z: 0.0}'
+The robot should move forward.
+
+Move backward
+bash
+gz topic -t /cmd_vel \
+  -m gz.msgs.Twist \
+  -p 'linear: {x: -0.5}, angular: {z: 0.0}'
+Turn left
+bash
+gz topic -t /cmd_vel \
+  -m gz.msgs.Twist \
+  -p 'linear: {x: 0.0}, angular: {z: 0.8}'
+Turn right
+bash
+gz topic -t /cmd_vel \
+  -m gz.msgs.Twist \
+  -p 'linear: {x: 0.0}, angular: {z: -0.8}'
+Move in a curve
+bash
+gz topic -t /cmd_vel \
+  -m gz.msgs.Twist \
+  -p 'linear: {x: 0.4}, angular: {z: 0.4}'
+Important limitation
+Each command above is sent once, so the robot may only move briefly or not visibly enough depending on the plugin timeout behavior. For continuous movement, run this command repeatedly:
+
+bash
+while true; do
+  gz topic -t /cmd_vel \
+    -m gz.msgs.Twist \
+    -p 'linear: {x: 0.5}, angular: {z: 0.0}'
+  sleep 0.1
+done
+Stop it using:
+
+text
+Ctrl + C
+Then send a zero-speed command:
+
+bash
+gz topic -t /cmd_vel \
+  -m gz.msgs.Twist \
+  -p 'linear: {x: 0.0}, angular: {z: 0.0}'
+Verify the command topic
+Before driving, confirm that the topic exists:
+
+bash
+gz topic -l | grep cmd_vel
+You should see:
+
+text
+/cmd_vel
+You can also check the robot’s odometry:
+
+bash
+gz topic -e -t /odom
